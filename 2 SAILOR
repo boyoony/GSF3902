@@ -1,0 +1,131 @@
+# Three replicates can be merged here or you can choose to not merge when you have enough read depth for each replicate
+# Even though you choose to not merge, run below command to make sure the .bam files are in a correct format 
+
+
+# Merge Hundley0422 (GSF3902) run with GSF3874 run into one file 
+
+#In aligned directory
+#create merged bam file
+
+module load samtools
+
+cd /N/slate/by6/GSFBY0422/results/aligned 
+
+samtools merge -@ 8 GSF3902-396-Rep1.merged.bam Hundley0422-BY-396-rep1_S1_R1_001_Aligned.sortedByCoord.out.bam GSF3874-BY-396-rep1_S7_R1_001_Aligned.sortedByCoord.out.bam
+
+samtools merge -@ 8 GSF3902-396-Rep2.merged.bam Hundley0422-BY-396-rep2_S2_R1_001_Aligned.sortedByCoord.out.bam GSF3874-BY-396-rep2_S8_R1_001_Aligned.sortedByCoord.out.bam 
+
+samtools merge -@ 8 GSF3902-396-Rep3.merged.bam Hundley0422-BY-396-rep3_S3_R1_001_Aligned.sortedByCoord.out.bam GSF3874-BY-396-rep3_S9_R1_001_Aligned.sortedByCoord.out.bam 
+
+
+samtools merge -@ 8 GSF3902-630-Rep1.merged.bam Hundley0422-BY-630-rep1_S4_R1_001_Aligned.sortedByCoord.out.bam GSF3874-BY-630-rep1_S10_R1_001_Aligned.sortedByCoord.out.bam 
+
+samtools merge -@ 8 GSF3902-630-Rep2.merged.bam Hundley0422-BY-630-rep2_S5_R1_001_Aligned.sortedByCoord.out.bam GSF3874-BY-630-rep2_S11_R1_001_Aligned.sortedByCoord.out.bam 
+
+samtools merge -@ 8 GSF3902-630-Rep3.merged.bam Hundley0422-BY-630-rep3_S6_R1_001_Aligned.sortedByCoord.out.bam GSF3874-BY-630-rep3_S12_R1_001_Aligned.sortedByCoord.out.bam 
+
+
+# If you are in rnaseq environment, go to base environment for FLARE
+
+conda activate base 
+
+
+#in GSFBY0422 directory
+
+mkdir sailor
+
+
+# Copy and paste the merged bam files to the sailor folder 
+
+cd /N/slate/by6/GSFBY0422/results/aligned 
+
+scp GSF3902-396-Rep1.merged.bam /N/slate/by6/GSFBY0422/sailor
+scp GSF3902-396-Rep2.merged.bam /N/slate/by6/GSFBY0422/sailor
+scp GSF3902-396-Rep3.merged.bam /N/slate/by6/GSFBY0422/sailor
+
+scp GSF3902-630-Rep1.merged.bam /N/slate/by6/GSF3524new/sailor
+scp GSF3902-630-Rep2.merged.bam /N/slate/by6/GSF3524new/sailor
+scp GSF3902-630-Rep3.merged.bam /N/slate/by6/GSF3524new/sailor
+
+cd /N/slate/by6/GSFBY0422/sailor
+
+
+#copy bedfile to sailor directory from HundleyLab project space FLARE directory
+
+cd /N/project/HundleyLab/FLARE 
+
+scp c.elegans.WS275.snps.nostrand.sorted.bed /N/slate/by6/GSFBY0422/sailor
+
+
+#copy workflow_sailor scripts and snakefile from HundleyLab project space FLARE directory
+
+cd /N/project/HundleyLab/FLARE 
+
+scp -r workflow_sailor /N/slate/by6/GSFBY0422/sailor
+
+
+#make all workflow_sailor scripts executable
+
+cd /N/slate/by6/GSFBY0422/sailor/workflow_sailor
+
+chmod +x filename
+
+
+#on carbonate
+#install snakemake
+
+conda install -c bioconda -c conda-forge snakemake
+
+
+#create three .json files (on text editor) with the following content for each replicate
+
+cd /N/slate/by6/GSFBY0422/sailor
+
+jq -n ’{
+  "samples_path": "/N/slate/by6/GSFBY0422/sailor”,
+  "samples": [
+    "GSF3902-396-Rep1.merged.bam"             
+  ],
+  "reverse_stranded": true,
+  "reference_fasta": "/N/slate/by6/GSFBY0422/genome/assembly.fasta",
+  "known_snps": "/N/slate/by6/GSFBY0422/sailor/c.elegans.WS275.snps.nostrand.sorted.bed",
+  "edit_type": "AG”,
+  "output_dir": "/N/slate/by6/GSFBY0422/results/GSF3902_flare_results_rep1"
+}’ > GSF3902-396-Rep1.json 
+
+
+# Make folders for FLARE results 
+#in GSFBY0422/results
+
+mkdir GSF3902_flare_results_rep1
+mkdir GSF3902_flare_results_rep2
+mkdir GSF3902_flare_results_rep3
+
+mkdir GSF3902_630flare_results_rep1
+mkdir GSF3902_630flare_results_rep2
+mkdir GSF3902_630flare_results_rep3
+
+
+# Run SAILOR
+#in sailor directory
+#load singularity every single time you run SAILOR
+
+cd sailor 
+module load singularity
+
+
+#use the following command to run SAILOR. under "--singularity-args --'bind' you will have to give access to every single directory that has relevant files
+
+snakemake --snakefile /N/slate/by6/GSFBY0422/sailor/workflow_sailor/Snakefile --configfile /N/slate/by6/GSFBY0422/sailor/GSF3902-396-Rep1.json --use-singularity --singularity-args '--bind /N/slate/by6/GSFBY0422 --bind /N/slate/by6/GSFBY0422/genome --bind /N/slate/by6/GSFBY0422/sailor/workflow_sailor/scripts --bind /N/slate/by6/GSFBY0422/sailor/workflow_sailor --bind /N/slate/by6/GSFBY0422/results/flare_results_rep1' -j1
+
+
+# Copy and paste files to Mac 
+# In Mac terminal 
+
+scp by6@quartz.uits.iu.edu:/N/slate/by6/GSFBY0422/results/GSF3902_flare_results_rep1/7_scored_outputs/GSF3902-396* ~/Desktop/
+scp by6@quartz.uits.iu.edu:/N/slate/by6/GSFBY0422/results/GSF3902_flare_results_rep2/7_scored_outputs/GSF3902-396* ~/Desktop/
+scp by6@quartz.uits.iu.edu:/N/slate/by6/GSFBY0422/results/GSF3902_flare_results_rep3/7_scored_outputs/GSF3902-396* ~/Desktop/
+
+scp by6@quartz.uits.iu.edu:/N/slate/by6/GSFBY0422/results/GSF3902_630flare_results_rep1/7_scored_outputs/GSF3902-630* ~/Desktop/
+scp by6@quartz.uits.iu.edu:/N/slate/by6/GSFBY0422/results/GSF3902_630flare_results_rep2/7_scored_outputs/GSF3902-630* ~/Desktop/
+scp by6@quartz.uits.iu.edu:/N/slate/by6/GSFBY0422/results/GSF3902_630flare_results_rep3/7_scored_outputs/GSF3902-630* ~/Desktop/
